@@ -40,7 +40,7 @@ start dotnet Configit.ClmPlatform.UI.Host.dll ^
 popd
 
 rem Wait for the hosts to start...
-timeout /t 5
+%SystemRoot%\System32\timeout.exe /t 5
 
 rem Start Traefik
 start %TRAEFIK_EXE% -c %TRAEFIK_CONFIG% --entryPoints='Name:http Address::%TRAEFIK_PORT%'
