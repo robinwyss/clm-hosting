@@ -2,12 +2,19 @@
 
 The samples in this repository focus on scaling CLM Platform to provide failover and improve performance.
 
-All samples use the [Traefik](https://traefik.io) reverse proxy for handling routing and load balancing of the individual nodes.
-The CLM Platform APIs are run in standalone mode using the built-in Kestrel web server.
+All samples use the [Traefik](https://traefik.io) reverse proxy for handling routing and load balancing of the individual nodes. Traefik is our choice for the samples, but the principles should apply to most reverse proxies and load balancers.
+We have chosen Traefik because:
 
-Although scaling in real life requires multiple logical servers, the samples will by default launch the individual nodes on your pc. You can easily adapt the Traefik configuration to a distributed scenario by adjusting IP addresses etc.
+- The project is under active development.
+- Traefik is distributed as a standalone executable - no installation required.
+- All settings can be specified in a self-contained configuration file.
 
-The Traefik samples cover the following scenarios:
+In the samples, the CLM Platform APIs are run in standalone mode using the built-in Kestrel web server.
+
+Although scaling in real life requires multiple logical servers, the samples will by default launch the individual nodes on your pc.
+You can easily adapt the Traefik configuration to a distributed scenario by adjusting IP addresses etc.
+
+We cover the following scenarios:
 
 1. [Reverse proxy](#scenario-1-reverse-proxy): Host the CLM Platform APIs and application behind a single entry point.
 1. [Redundancy and failover](#scenario-2-redundancy-and-failover): Scale CLM Platform to provide failover for the Configuration API.
@@ -48,7 +55,7 @@ The `run.sh` script will launch the server nodes and Traefik as background proce
 
 Note that the script overrides all application settings related to storage, logging and endpoints.
 
-Using a web browser, go to `http://localhost:<TRAEFIK_PORT>` to see the configurator web app. To see the Traefik dashboard go to `http://localhost:8080`.
+Using a web browser, go to `http://localhost:<TRAEFIK_PORT>` to open the configurator web app. To view the Traefik dashboard, go to `http://localhost:8080`.
 
 ### Data and configuration
 
