@@ -212,7 +212,7 @@ specific nodes to handled specific data. In the figure below, Node 1 handles all
 In this example we will use the package path as driver for selecting a node to handle the request.
 Alternatively you could use a special HTTP header carrying information for the load balancer to pick up.
 
-Assuming your complex model is locate in a package called `ihear_complex`, you can adjust the `[backends]` section like this:
+Assuming your complex model is located in a VT package called `ihear_complex`, you can adjust the `[backends]` section like this:
 
 ```toml
 [backends]
