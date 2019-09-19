@@ -1,0 +1,93 @@
+# This file contains an example of using Traefik as a reverse proxy for the CLM Platform APIs.
+# By using this configuration you will expose the Storage API and Configuration API on the same port.
+# Additionally, the Configuration API is backed by three nodes using weighted round-robin load-balancing.
+
+logLevel = "INFO"
+
+# Enable the traefik API and dashboard on port 8080.
+# Warning: the dashboard and API do not require authentication in the default configuration
+# You can either:
+# - Close port 8080 in the firewall
+# - Disable the api/dashboard completely.
+# - Add authentication on the dashboard entry point - refer to the Traefik docs for more information.
+[api]
+dashboard = true
+
+# Watch this file and auto-reload configuration on changes
+[file]
+watch = true
+
+# Entry points specify the network entry points managed by traefik
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+
+# Frontends specify routing to individual backends defined further down
+[frontends]
+  [frontends.storage]
+  backend = "storage"
+    [frontends.storage.routes.default]
+    # Everything prefixed with "/storage/v1" goes to the Storage API
+    rule = "PathPrefix:/storage/v1"
+  
+  [frontends.configurator_ihear_complex]
+  backend = "configurator_ihear_complex"
+    [frontends.configurator_ihear_complex.routes.prefix]
+    rule = "PathPrefix:/configurator/v1"
+    [frontends.configurator_ihear_complex.routes.query]
+    rule = "Query:packagePath={id:samples\\/ihear_complex(.)*}"
+
+  [frontends.configurator_default]
+  backend = "configurator_default"
+    [frontends.configurator_default.routes.default]
+    # Everything prefixed with "/configurator/v1" goes to the default node.
+    rule = "PathPrefix:/configurator/v1"
+
+  # Everything not matching the rules for the Storage and Configuration APIs goes here.
+  [frontends.ui]    
+  backend = "ui"
+
+# Backends specify the individual server nodes.
+[backends]
+  # The "configurator_ihear_complex" backend corresponds to a single Configuration API node.
+  [backends.configurator_ihear_complex]
+    [backends.configurator_ihear_complex.loadbalancer]    
+    method = "wrr"
+    [backends.configurator_ihear_complex.servers.server1]
+    url = "http://127.0.0.1:9011"
+    weight = 1
+    # A health check is added, allowing Traefik to detect if a service is down.
+    [backends.configurator_ihear_complex.healthcheck]
+    path = "/health"
+    interval = "60s"
+  # The "configurator_default" backend corresponds to two Configuration API nodes.
+  [backends.configurator_default]
+    [backends.configurator_default.loadbalancer]    
+    method = "wrr"
+    [backends.configurator_default.servers.server2]
+    url = "http://127.0.0.1:9012"
+    weight = 1
+    [backends.configurator_default.servers.server3]
+    url = "http://127.0.0.1:9013"
+    weight = 1
+    # A health check is added, allowing Traefik to detect if a service is down.
+    [backends.configurator_default.healthcheck]
+    path = "/health"
+    interval = "60s"
+
+  # The "storage" backend covers the single Storage API node.
+  [backends.storage]
+    [backends.storage.servers.server1]
+    url = "http://127.0.0.1:9021"
+    # A health check is added, allowing Traefik to detect if a service is down.
+    [backends.storage.healthcheck]
+    path = "/health"
+    interval = "60s"
+
+  # The "ui" backend for the configurator web app and documentation.
+  [backends.ui]
+    [backends.ui.servers.server1]
+    url = "http://127.0.0.1:9001"
+    [backends.ui.healthcheck]
+    path = "/health"
+    interval = "60s"

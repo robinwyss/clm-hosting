@@ -1,0 +1,57 @@
+# This file contains a minimal example of using Traefik as a reverse proxy for the CLM Platform APIs.
+# By using this configuration you will expose the Storage API and Configuration API on the same port.
+
+logLevel = "INFO"
+
+# Enable the traefik API and dashboard on port 8080.
+# Warning: the dashboard and API do not require authentication in the default configuration
+# You can either:
+# - Close port 8080 in the firewall
+# - Disable the api/dashboard completely.
+# - Add authentication on the dashboard entry point - refer to the Traefik docs for more information.
+[api]
+dashboard = true
+
+# Watch this file and auto-reload configuration on changes
+[file]
+watch = true
+
+# Entry points specify the network entry points managed by traefik
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+
+# Frontends specify routing to individual backends defined further down
+[frontends]
+  [frontends.storage]
+  backend = "storage"
+    [frontends.storage.routes.default]
+    # Everything prefixed with "/storage/v1" goes to the Storage API
+    rule = "PathPrefix:/storage/v1"
+
+  [frontends.configurator]
+  backend = "configurator"
+    [frontends.configurator.routes.default]
+    # Everything prefixed with "/configurator/v1" goes to the Configuration API
+    rule = "PathPrefix:/configurator/v1"
+
+  # Everything not matching the rules for the Storage and Configuration APIs goes here.
+  [frontends.ui]    
+  backend = "ui"
+
+# Backends specify the individual server nodes.
+[backends]
+  # The "configurator" backend corresponds to a single Configuration API node.
+  [backends.configurator]
+    [backends.configurator.servers.server1]
+    url = "http://127.0.0.1:9011"
+
+  # The "storage" backend covers the single Storage API node.
+  [backends.storage]
+    [backends.storage.servers.server1]
+    url = "http://127.0.0.1:9021"
+
+  # The "ui" backend for the configurator web app and documentation.
+  [backends.ui]
+    [backends.ui.servers.server1]
+    url = "http://127.0.0.1:9001"
