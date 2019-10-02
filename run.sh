@@ -22,7 +22,7 @@ do
   dotnet Configit.ClmPlatform.Configurator.Host.dll \
   --Storage:ConnectionString=$CONNECTION_STRING \
   --Kestrel:Endpoints:Http:Url="http://localhost:901${i}" \
-  --Serilog:WriteTo:0:Args:path="${LOG_DIR}/configurator${i}.txt" &
+  --Logging:File:Path="${LOG_DIR}/configurator${i}-{Date}.txt" &
   popd
 done
 
@@ -31,7 +31,7 @@ pushd "${INSTALL_DIR}/bin/storage"
 dotnet Configit.ClmPlatform.Storage.Host.dll \
 --Storage:ConnectionString=$CONNECTION_STRING \
 --Kestrel:Endpoints:Http:Url="http://localhost:9021" \
---Serilog:WriteTo:0:Args:path="${LOG_DIR}/storage.txt" &
+--Logging:File:Path="${LOG_DIR}/storage-{Date}.txt" &
 popd
 
 # Start Configurator/documentation site.
@@ -40,7 +40,7 @@ dotnet Configit.ClmPlatform.UI.Host.dll \
 --Kestrel:Endpoints:Http:Url="http://localhost:9001" \
 --UI:ConfigurationApiUrl="http://localhost:${TRAEFIK_PORT}/configurator/v1" \
 --UI:StorageApiUrl="http://localhost:${TRAEFIK_PORT}/storage/v1" \
---Serilog:WriteTo:0:Args:path="${LOG_DIR}/ui.txt" &
+--Logging:File:Path="${LOG_DIR}/ui-{Date}.txt" &
 popd
 
 # Wait for the hosts to start

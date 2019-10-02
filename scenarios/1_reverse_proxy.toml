@@ -36,7 +36,7 @@ watch = true
     rule = "PathPrefix:/configurator/v1"
 
   # Everything not matching the rules for the Storage and Configuration APIs goes here.
-  [frontends.ui]    
+  [frontends.ui]
   backend = "ui"
 
 # Backends specify the individual server nodes.
