@@ -18,7 +18,7 @@ FOR /L %%A IN (1,1,3) DO (
   start dotnet Configit.ClmPlatform.Configurator.Host.dll ^
   --Storage:ConnectionString=%CONNECTION_STRING% ^
   --Kestrel:Endpoints:Http:Url="http://localhost:901%%A" ^
-  --Serilog:WriteTo:0:Args:path="%LOG_DIR%\configurator%%A.txt" --Serilog:WriteTo:1:Name="Console"
+  --Logging:File:Path="%LOG_DIR%\configurator%%A-{Date}.txt" --Logging:Console:IncludeScopes=false
 )
 popd
 
@@ -27,7 +27,7 @@ pushd %INSTALL_DIR%\bin\storage
 start dotnet Configit.ClmPlatform.Storage.Host.dll ^
 --Storage:ConnectionString=%CONNECTION_STRING% ^
 --Kestrel:Endpoints:Http:Url="http://localhost:9021" ^
---Serilog:WriteTo:0:Args:path="%LOG_DIR%\storage.txt" --Serilog:WriteTo:1:Name="Console"
+--Logging:File:Path="%LOG_DIR%\storage-{Date}.txt" --Logging:Console:IncludeScopes=false
 popd
 
 rem Start Configurator/documentation site.
@@ -36,7 +36,7 @@ start dotnet Configit.ClmPlatform.UI.Host.dll ^
 --Kestrel:Endpoints:Http:Url="http://localhost:9001" ^
 --UI:ConfigurationApiUrl=http://localhost:%TRAEFIK_PORT%/configurator/v1 ^
 --UI:StorageApiUrl=http://localhost:%TRAEFIK_PORT%/storage/v1 ^
---Serilog:WriteTo:0:Args:path="%LOG_DIR%\ui.txt" --Serilog:WriteTo:1:Name="Console"
+--Logging:File:Path="%LOG_DIR%\ui-{Date}.txt" --Logging:Console:IncludeScopes=false
 popd
 
 rem Wait for the hosts to start...
