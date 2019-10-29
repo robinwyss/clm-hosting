@@ -4,7 +4,7 @@ rem When starting the individual APIs we override the connection string, endpoin
 rem If you have already customized appsettings.json the CLI options might collide with your changes.
 
 rem This should point to where you installed or extracted the CLM Platform zip file
-set INSTALL_DIR=C:\Program Files\Configit\CLM Platform On-Premise\1.1.0
+set INSTALL_DIR=C:\Program Files\Configit\CLM Platform\1.1.0
 set TRAEFIK_EXE=traefik_windows-amd64.exe
 set TRAEFIK_CONFIG=scenarios\3_lb_round_robin.toml
 set TRAEFIK_PORT=80
