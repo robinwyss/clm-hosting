@@ -5,8 +5,8 @@
 
 # This should point to where you extracted the CLM Platform zip file
 INSTALL_DIR="./clm-platform-1.1.0"
-TRAEFIK_EXE="./traefik_linux-amd64"
-TRAEFIK_CONFIG="./scenarios/3_lb_round_robin.toml"
+TRAEFIK_EXE="./traefik"
+TRAEFIK_CONFIG="./scenarios/3_lb_round_robin.yaml"
 TRAEFIK_PORT=80
 
 CONNECTION_STRING="StorageType=Directory;RootPath=${PWD}/data"
@@ -47,6 +47,8 @@ popd
 sleep 5s
 
 # Start Traefik
-$TRAEFIK_EXE -c $TRAEFIK_CONFIG --entryPoints="Name:http Address::${TRAEFIK_PORT}" &
+$TRAEFIK_EXE --entrypoints.web.address=:$TRAEFIK_PORT \
+--providers.file.filename=$TRAEFIK_CONFIG \
+--api.insecure=true --api.dashboard=true --log.level=debug
 
 wait

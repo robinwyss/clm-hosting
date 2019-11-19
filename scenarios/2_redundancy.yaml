@@ -1,0 +1,55 @@
+# This file contains an example of using Traefik as a reverse proxy for the CLM Platform APIs.
+# By using this configuration you will expose the Storage API and Configuration API on the same port.
+# Additionally, the Configuration API is backed by three nodes in a redundant setup.
+http:
+  routers:
+    # Everything prefixed with "/storage/v1" goes to the Storage API
+    storage:
+      rule: "PathPrefix(`/storage/v1`)"
+      service: storage
+
+    # Everything prefixed with "/configurator/v1" goes to the Configuration API
+    configuration:
+      rule: "PathPrefix(`/configurator/v1`)"
+      service: configuration
+
+    # Everything not matching the rules for the Storage and Configuration APIs goes here.
+    ui:
+      rule: "PathPrefix(`/`)"
+      service: ui
+
+  services:
+    # The "storage" service covers the single Storage API node.
+    storage:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9021
+
+    # The "configuration" service corresponds to a single Configuration API node.
+    configuration:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9011
+          - url: http://localhost:9012
+          - url: http://localhost:9013
+
+    # The "ui" service for the configurator web app and documentation.
+    ui:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9001

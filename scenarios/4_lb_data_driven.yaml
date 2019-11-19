@@ -1,0 +1,71 @@
+# This file contains an example of using Traefik as a reverse proxy for the CLM Platform APIs.
+# By using this configuration you will expose the Storage API and Configuration API on the same port.
+# Additionally, the Configuration API is configured using data-driven load balancing, directing complex
+# configurations to the a specific powerful server.
+http:
+  routers:
+    # Everything prefixed with "/storage/v1" goes to the Storage API
+    storage:
+      rule: "PathPrefix(`/storage/v1`)"
+      service: storage
+
+    # Everything prefixed with "/configurator/v1" and in the ihear VT package goes to the powerful node
+    configuration-ihear-complex:
+      rule: "PathPrefix(`/configurator/v1`) && Query(`packagePath={id:samples\\/ihear_complex(.)*}`)"
+      service: configuration-powerful
+
+    # Everything prefixed with "/configurator/v1" and NOT in the ihear_complex VT package goes to the default node
+    configuration-default:
+      rule: "PathPrefix(`/configurator/v1`)"
+      service: configuration-default
+
+    # Everything not matching the rules for the Storage and Configuration APIs goes here.
+    ui:
+      rule: "PathPrefix(`/`)"
+      service: ui
+
+  services:
+    # The "storage" service covers the single Storage API node.
+    storage:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9021
+
+    # The "configuration-powerful" service corresponds to a single Configuration API node.
+    configuration-powerful:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9011
+
+    # The "configuration-default" service corresponds to two Configuration API nodes.
+    configuration-default:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9012
+          - url: http://localhost:9013
+
+    # The "ui" service for the configurator web app and documentation.
+    ui:
+      loadBalancer:
+        # A health check is added, allowing Traefik to detect if a server is down.
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+        servers:
+          - url: http://localhost:9001

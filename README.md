@@ -28,7 +28,7 @@ Start by cloning this repository to your local disk and then follow the guide th
 ### Windows
 
 - Obtain the CLM Platform distribution and follow the installation instructions.
-- Download Traefik 1.7.\* from [here](https://github.com/containous/traefik/releases) and place it in a suitable location.
+- Download Traefik 2.0.\* from [here](https://github.com/containous/traefik/releases) and place it in a suitable location.
 - Open `run.bat` in a text editor:
   - Edit the `INSTALL_DIR` variable to match your CLM Platform installation directory.
   - Edit the `TRAEFIK_EXE` variable to where you placed the downloaded Traefik binary.
@@ -43,7 +43,7 @@ Note that the script overrides all application settings related to storage, logg
 ### Linux and Unix systems
 
 - Obtain the CLM Platform distribution and unzip it to a suitable location.
-- Download Traefik 1.7.\* from [here](https://github.com/containous/traefik/releases) and place it in a suitable location.
+- Download Traefik 2.0.\* from [here](https://github.com/containous/traefik/releases) and place it in a suitable location.
 - Open `run.sh` in a text editor:
   - Edit the `INSTALL_DIR` variable to match your CLM Platform installation directory.
   - Edit the `TRAEFIK_EXE` variable to where you placed the downloaded Traefik binary.
@@ -59,7 +59,7 @@ Using a web browser, go to `http://localhost:<TRAEFIK_PORT>` to open the configu
 
 ### Data and configuration
 
-When you have successfully launched a sample, you can then adjust settings such as logging and the storage connection string by editing the `appsettings.json` file. Note that modifying the `appsettings.json` file requires a restart of the services before it will take effect.
+When you have successfully launched a sample, you can then adjust settings such as logging and the storage connection string by editing the `appsettings.json` file or directly in the `run.bat`/`run.sh` script. Note that modifying the `appsettings.json` file requires a restart of the services before it will take effect.
 
 To test a sample, you can publish a package using the `clm` tool - for example the iHear sample package provided in the CLM Platform distribution. The CLM Platform configurator web app allows you to browse VT packages and test product configurations.
 
@@ -71,48 +71,48 @@ A reverse proxy enables you to provide a single entry point for multiple service
 
 All requests from the outside go through the reverse proxy. The reverse proxy inspects the URL and routes the request accordingly.
 
-The `[backends]` define the individual nodes that host the CLM Platform services:
+In a Traefik configuration, the `routers` define how HTTP requests are routed to
+individual `services`:
 
-```toml
-[backends]
-  # The "configurator" backend corresponds to a single Configuration API node.
-  [backends.configurator]
-    [backends.configurator.servers.server1]
-    url = "http://127.0.0.1:9011"
-
-  # The "storage" backend covers the single Storage API node.
-  [backends.storage]
-    [backends.storage.servers.server1]
-    url = "http://127.0.0.1:9021"
-
-  # The "ui" backend for the configurator web app and documentation.
-  [backends.ui]
-    [backends.ui.servers.server1]
-    url = "http://127.0.0.1:9001"
-```
-
-The configuration below shows how you can configure Traefik to route requests based on the path in the `[frontends]` section.
-
-```toml
-[frontends]
-  [frontends.storage]
-  backend = "storage"
-    [frontends.storage.routes.default]
+```yaml
+http:
+  routers:
     # Everything prefixed with "/storage/v1" goes to the Storage API
-    rule = "PathPrefix:/storage/v1"
+    storage:
+      rule: "PathPrefix(`/storage/v1`)"
+      service: storage
 
-  [frontends.configurator]
-  backend = "configurator"
-    [frontends.configurator.routes.default]
     # Everything prefixed with "/configurator/v1" goes to the Configuration API
-    rule = "PathPrefix:/configurator/v1"
+    configuration:
+      rule: "PathPrefix(`/configurator/v1`)"
+      service: configuration
 
-  # Everything not matching the rules for the Storage and Configuration APIs goes here.
-  [frontends.ui]
-  backend = "ui"
+    # Everything not matching the rules for the Storage and Configuration APIs goes here.
+    ui:
+      rule: "PathPrefix(`/`)"
+      service: ui
+
+  services:
+    # The "storage" service covers the single Storage API node.
+    storage:
+      loadBalancer:
+        servers:
+          - url: http://localhost:9021
+
+    # The "configurator" service corresponds to a single Configuration API node.
+    configuration:
+      loadBalancer:
+        servers:
+          - url: http://localhost:9011
+
+    # The "ui" service for the configurator web app and documentation.
+    ui:
+      loadBalancer:
+        servers:
+          - url: http://localhost:9001
 ```
 
-See [1_reverse_proxy.toml](scenarios/1_reverse_proxy.toml) for the full configuration.
+See [1_reverse_proxy.yaml](scenarios/1_reverse_proxy.yaml) for the full configuration.
 
 ## Scenario 2: Redundancy and failover
 
@@ -121,84 +121,100 @@ The reverse proxy example above does not add any redundancy to your setup. The f
 ![Redundancy](img/reverse-proxy-health-check.png)
 
 For CLM Platform, you would probably like to provide one or more redundant Configuration API instances.
-To enable redundancy, you need to change the `[backends]` section of the Traefik configuration:
+To enable redundancy, you need to change the `services` section of the Traefik configuration:
 
-```toml
-[backends]
-  # The "configurator" backend corresponds to two Configuration API node.
-  [backends.configurator]
-    [backends.configurator.servers.server1]
-    url = "http://127.0.0.1:9011"
-    [backends.configurator.servers.server2]
-    url = "http://127.0.0.1:9012"
-    [backends.configurator.servers.server3]
-    url = "http://127.0.0.1:9013"
-    # A health check is added, allowing Traefik to detect if a service is down.
-    [backends.configurator.healthcheck]
-    path = "/health"
-    interval = "60s"
+```yaml
+services:
+  # The "storage" service covers the single Storage API node.
+  storage:
+    loadBalancer:
+      # A health check is added, allowing Traefik to detect if a server is down.
+      healthCheck:
+        path: /health
+        interval: "30s"
+        timeout: "3s"
+      servers:
+        - url: http://localhost:9021
 
-  # The "storage" backend covers the single Storage API node.
-  [backends.storage]
-    [backends.storage.servers.server1]
-    url = "http://127.0.0.1:9021"
-    # A health check is added, allowing Traefik to detect if a service is down.
-    [backends.storage.healthcheck]
-    path = "/health"
-    interval = "60s"
+  # The "configuration" service corresponds to a single Configuration API node.
+  configuration:
+    loadBalancer:
+      # A health check is added, allowing Traefik to detect if a server is down.
+      healthCheck:
+        path: /health
+        interval: "30s"
+        timeout: "3s"
+      servers:
+        - url: http://localhost:9011
+        - url: http://localhost:9012
+        - url: http://localhost:9013
 
-  # The "ui" backend for the configurator web app and documentation.
-  [backends.ui]
-    [backends.ui.servers.server1]
-    url = "http://127.0.0.1:9001"
-    [backends.ui.healthcheck]
-    path = "/health"
-    interval = "60s"
+  # The "ui" service for the configurator web app and documentation.
+  ui:
+    loadBalancer:
+      # A health check is added, allowing Traefik to detect if a server is down.
+      healthCheck:
+        path: /health
+        interval: "30s"
+        timeout: "3s"
+      servers:
+        - url: http://localhost:9001
 ```
 
 This change adds the following:
 
 - The Configuration API is scaled to three nodes, providing failover.
-- Traefik queries the `/health` endpoint every 60 seconds, removing nodes that are down. When node is up again, Traefik will discover it and start directing requests to the node again.
+- Traefik queries the `/health` endpoint every 30 seconds, removing nodes that are down. When a node is up again, Traefik will discover it and start directing requests to the node again.
 
-See [2_redundancy.toml](scenarios/2_redundancy.toml) for the full configuration.
+See [2_redundancy.yaml](scenarios/2_redundancy.yaml) for the full configuration.
 
 ## Scenario 3: Round-robin load balancing
 
 The figure below shows an example where four uses configure three different cars. When using a _round-robin_ load balancing strategy, all nodes will eventually configure all three car models.
 
-![Round robin](img/round-robin-load-balancing.png)
+![Round-robin](img/round-robin-load-balancing.png)
 
 In the redundancy example above, we scaled the Configuration API to three nodes.
-We did not configure any load balancing settings and in practice, this means that Traefik will use a round-robin strategy, distributing requests evenly on the three nodes.
+We did not configure any load balancing settings and, in practice, this means that Traefik will use a round-robin strategy, distributing requests evenly on the three nodes.
 
-We can modify the `[backends.configurator]` sections slightly:
+We can modify the `configuraton` section:
 
-```toml
-[backends]
-  # The "configurator" backend corresponds to two Configuration API node.
-  [backends.configurator]
-    [backends.configurator.loadbalancer]
-    # Use a weighted round-robin. Each server's assigned "weight" gives an indication
-    # of how well that server performs relative to the other servers - higher is better.
-    method = "wrr"
-    [backends.configurator.servers.server1]
-    url = "http://127.0.0.1:9011"
-    weight = 4
-    [backends.configurator.servers.server2]
-    url = "http://127.0.0.1:9012"
-    weight = 2
-    [backends.configurator.servers.server3]
-    url = "http://127.0.0.1:9013"
-    weight = 1
+```yaml
+# The "configuration" service is a weighted round-robin load balancer based on three nodes.
+# The nodes are divided into two groups with weights of 4 and 1 respectively.
+configuration:
+  weighted:
+    services:
+      - name: configuration-powerful
+        weight: 4
+      - name: configuration-backup
+        weight: 1
+configuration-powerful:
+  loadBalancer:
+    healthCheck:
+      path: /health
+      interval: "30s"
+      timeout: "3s"
+    servers:
+      - url: http://localhost:9011
+      - url: http://localhost:9012
+configuration-backup:
+  loadBalancer:
+    healthCheck:
+      path: /health
+      interval: "30s"
+      timeout: "3s"
+    servers:
+      - url: http://localhost:9013
 ```
 
 This change adds the following:
 
-- We explicitly state the load-balancing strategy `wrr`, which stands for _weighted round-robin_.
-- We assign a `weight` to all nodes, used by the `wrr` strategy. The weight describes how well the node is expected to perform relative to the other nodes. For example, a node with the weight 2 should be twice as fast as a node with a weight of 1.
+- We use a weighted load balancing strategy and divide the nodes into two services.
+- We assign a `weight` to the services. The weight describes how well the services are expected to perform relative to other services.
+  For example, a service with the weight 2 should be twice as fast as a service with a weight of 1.
 
-See [3_lb_round_robin.toml](scenarios/3_lb_round_robin.toml) for the full configuration.
+See [3_lb_round_robin.yaml](scenarios/3_lb_round_robin.yaml) for the full configuration.
 
 ## Scenario 4: Data driven load balancing
 
@@ -207,57 +223,57 @@ If some products require a particularly powerful server or all product models in
 then you can try to apply _data driven load balancing_. Instead distributing requests evenly across the nodes, you can appoint
 specific nodes to handled specific data. In the figure below, Node 1 handles all requests to the Sedan car model.
 
-![Round robin](img/data-driven-load-balancing.png)
+![Round-robin](img/data-driven-load-balancing.png)
 
 In this example we will use the package path as driver for selecting a node to handle the request.
 Alternatively you could use a special HTTP header carrying information for the load balancer to pick up.
 
-Assuming your complex model is located in a VT package called `ihear_complex`, you can adjust the `[backends]` section like this:
+First we add a separate service for the powerful server:
 
-```toml
-[backends]
-  # The "configurator_ihear_complex" backend corresponds to a single Configuration API node.
-  [backends.configurator_ihear_complex]
-    [backends.configurator_ihear_complex.loadbalancer]
-    method = "wrr"
-    [backends.configurator_ihear_complex.servers.server1]
-    url = "http://127.0.0.1:9011"
-    weight = 1
+```yaml
+services:
+  # The "configuration-powerful" service corresponds to a single Configuration API node.
+  configuration-powerful:
+    loadBalancer:
+      # A health check is added, allowing Traefik to detect if a server is down.
+      healthCheck:
+        path: /health
+        interval: "30s"
+        timeout: "3s"
+      servers:
+        - url: http://localhost:9011
 
-  # The "configurator_default" backend corresponds to two Configuration API nodes.
-  [backends.configurator_default]
-    [backends.configurator_default.loadbalancer]
-    method = "wrr"
-    [backends.configurator_default.servers.server2]
-    url = "http://127.0.0.1:9012"
-    weight = 1
-    [backends.configurator_default.servers.server3]
-    url = "http://127.0.0.1:9013"
-    weight = 1
+  # The "configuration-default" service corresponds to two Configuration API nodes.
+  configuration-default:
+    loadBalancer:
+      # A health check is added, allowing Traefik to detect if a server is down.
+      healthCheck:
+        path: /health
+        interval: "30s"
+        timeout: "3s"
+      servers:
+        - url: http://localhost:9012
+        - url: http://localhost:9013
 ```
 
-With this change the Configuration API is split into two backends - one for the complex model and one for all other models.
+With this change the Configuration API is split into two services - one for the complex models and one service to handle the rest.
 
-Next, adjust the `[frontends]` section:
+Assuming your complex model is located in a VT package called `ihear_complex`, you can adjust the `routers` section:
 
-```toml
-[frontends]
-  [frontends.configurator_ihear_complex]
-  backend = "configurator_ihear_complex"
-    [frontends.configurator_ihear_complex.routes.prefix]
-    rule = "PathPrefix:/configurator/v1"
-    [frontends.configurator_ihear_complex.routes.query]
-    rule = "Query:packagePath={id:samples\\/ihear_complex(.)*}"
+```yaml
+routers:
+  # Everything prefixed with "/configurator/v1" and in the ihear VT package goes to the powerful node
+  configuration-ihear-complex:
+    rule: "PathPrefix(`/configurator/v1`) && Query(`packagePath={id:samples\\/ihear_complex(.)*}`)"
+    service: configuration-powerful
 
-  [frontends.configurator_default]
-  backend = "configurator_default"
-    [frontends.configurator_default.routes.default]
-    # Everything prefixed with "/configurator/v1" goes to the default node.
-    rule = "PathPrefix:/configurator/v1"
-
+  # Everything prefixed with "/configurator/v1" and NOT in the ihear_complex VT package goes to the default node
+  configuration-default:
+    rule: "PathPrefix(`/configurator/v1`)"
+    service: configuration-default
 ```
 
-This will make the queries for the Configuration API go to the `configurator_ihear_complex` backend when the package path starts with
-`samples/ihear_complex`. The rest of the queries will go to the two `configurator_default` nodes.
+This will make the queries for the Configuration API go to the `configuration-powerful` service when the package path starts with
+`samples/ihear_complex`. The rest of the queries will go to the two `configuration-default` nodes.
 
-See [4_lb_data_driven.toml](scenarios/4_lb_data_driven.toml) for the full configuration.
+See [4_lb_data_driven.yaml](scenarios/4_lb_data_driven.yaml) for the full configuration.
