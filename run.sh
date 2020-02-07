@@ -18,7 +18,7 @@ trap "kill 0" EXIT
 # Start three Configuration API hosts with individual ports and log files
 for i in {1..3}
 do
-  pushd "${INSTALL_DIR}/bin/configurator"
+  pushd "${INSTALL_DIR}/bin/configuration"
   dotnet Configit.ClmPlatform.Configurator.Host.dll \
   --Storage:ConnectionString=$CONNECTION_STRING \
   --Kestrel:Endpoints:Http:Url="http://localhost:901${i}" \

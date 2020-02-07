@@ -14,7 +14,7 @@ set CONNECTION_STRING=StorageType=Directory;RootPath=%cd%\data
 set LOG_DIR=%cd%\logs
 
 rem Start three Configuration API hosts with individual ports and log files
-pushd %INSTALL_DIR%\bin\configurator
+pushd %INSTALL_DIR%\bin\configuration
 FOR /L %%A IN (1,1,3) DO (
   start dotnet Configit.ClmPlatform.Configurator.Host.dll ^
   --Storage:ConnectionString=%CONNECTION_STRING% ^
